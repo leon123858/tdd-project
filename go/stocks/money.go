@@ -6,6 +6,7 @@ const (
 	USD Currency = "USD"
 	EUR Currency = "EUR"
 	TWD Currency = "TWD"
+	JPY Currency = "JPY"
 )
 
 type Money struct {

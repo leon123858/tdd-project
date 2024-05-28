@@ -81,8 +81,77 @@ func TestMoney_Divide(t *testing.T) {
 func TestMoney_Add(t *testing.T) {
 	portfolio := s.Portfolio{}
 	portfolio.Add(s.NewMoney(10, s.USD))
+	portfolio.Add(s.NewMoney(30, s.USD))
+	bank := s.NewBank()
+	dollars, _ := portfolio.Get(bank, s.USD)
+	assert.Equal(t, s.NewMoney(40, s.USD), dollars)
+}
+
+func TestMoney_AddMixedCurrencies(t *testing.T) {
+	portfolio := s.Portfolio{}
+	portfolio.Add(s.NewMoney(10, s.USD))
 	portfolio.Add(s.NewMoney(20, s.TWD))
 	portfolio.Add(s.NewMoney(30, s.USD))
-	dollars := portfolio.Get(s.USD)
-	assert.Equal(t, s.NewMoney(40, s.USD), dollars)
+	portfolio.Add(s.NewMoney(40, s.EUR))
+	bank := s.NewBank()
+	bank.AddExchangeRate(s.USD, s.TWD, 30.5)
+	bank.AddExchangeRate(s.EUR, s.TWD, 40.5)
+	bank.AddExchangeRate(s.USD, s.EUR, 0.8)
+	bank.AddExchangeRate(s.TWD, s.EUR, 0.025)
+	bank.AddExchangeRate(s.TWD, s.USD, 0.0328)
+	bank.AddExchangeRate(s.EUR, s.USD, 1.25)
+	dollars, _ := portfolio.Get(bank, s.TWD)
+	assert.Equal(t, s.NewMoney(2860, s.TWD), dollars)
+	dollars, _ = portfolio.Get(bank, s.EUR)
+	assert.Equal(t, s.NewMoney(72.5, s.EUR), dollars)
+	dollars, _ = portfolio.Get(bank, s.USD)
+	assert.Equal(t, s.NewMoney(90.656, s.USD), dollars)
+}
+
+func TestMoney_ConvertNotExist(t *testing.T) {
+	portfolio := s.Portfolio{}
+	portfolio.Add(s.NewMoney(10, s.USD))
+	portfolio.Add(s.NewMoney(20, s.TWD))
+	portfolio.Add(s.NewMoney(30, s.USD))
+	portfolio.Add(s.NewMoney(40, s.EUR))
+	bank := s.NewBank()
+	_, err := portfolio.Get(bank, s.JPY)
+	assert.NotNil(t, err)
+	assert.Equal(t, "no exchange rate found: USD to JPY", err.Error())
+
+	portfolio = s.Portfolio{}
+	portfolio.Add(s.NewMoney(50, s.JPY))
+	_, e := portfolio.Get(bank, s.USD)
+	assert.NotNil(t, e)
+	assert.Equal(t, "no exchange rate found: JPY to USD", e.Error())
+}
+
+func TestMoney_Convert(t *testing.T) {
+	bank := s.NewBank()
+	bank.AddExchangeRate(s.USD, s.EUR, 0.8)
+	m := s.NewMoney(10, s.USD)
+	converted, e := bank.Convert(m, s.EUR)
+	assert.Nil(t, e)
+	assert.Equal(t, s.NewMoney(8, s.EUR), converted)
+}
+
+func TestMoney_ConvertSameCurrency(t *testing.T) {
+	bank := s.NewBank()
+	m := s.NewMoney(10, s.USD)
+	converted, e := bank.Convert(m, s.USD)
+	assert.Nil(t, e)
+	assert.Equal(t, s.NewMoney(10, s.USD), converted)
+}
+
+func TestMoney_ConvertRateEdit(t *testing.T) {
+	bank := s.NewBank()
+	m := s.NewMoney(10, s.USD)
+	bank.AddExchangeRate(s.USD, s.EUR, 0.8)
+	converted, e := bank.Convert(m, s.EUR)
+	assert.Nil(t, e)
+	assert.Equal(t, s.NewMoney(8, s.EUR), converted)
+	bank.AddExchangeRate(s.USD, s.EUR, 0.9)
+	converted, e = bank.Convert(m, s.EUR)
+	assert.Nil(t, e)
+	assert.Equal(t, s.NewMoney(9, s.EUR), converted)
 }

@@ -8,12 +8,14 @@ func (p *Portfolio) Add(money Money) {
 	p.money = append(p.money, money)
 }
 
-func (p *Portfolio) Get(c Currency) Money {
-	sum := float32(0)
+func (p *Portfolio) Get(b *Bank, c Currency) (Money, error) {
+	total := float32(0)
 	for _, m := range p.money {
-		if m.currency == c {
-			sum += m.amount
+		converted, err := b.Convert(m, c)
+		if err != nil {
+			return Money{}, err
 		}
+		total += converted.amount
 	}
-	return Money{sum, c}
+	return Money{total, c}, nil
 }
